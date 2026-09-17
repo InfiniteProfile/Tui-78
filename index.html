@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TUI 77</title>
+<style>
+  :root{
+    --bg:#0a0a0c;
+    --bg-elev:#131316;
+    --card:#17171b;
+    --border:#242429;
+    --text:#e9e9ec;
+    --text-dim:#8a8a93;
+    --accent:#c9a24b;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+  }
+  body{
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  header.site-head{
+    position:sticky;
+    top:0;
+    z-index:20;
+    padding:22px 20px 16px;
+    text-align:center;
+    background:linear-gradient(180deg, rgba(10,10,12,0.97), rgba(10,10,12,0.85) 70%, rgba(10,10,12,0));
+    backdrop-filter:blur(6px);
+  }
+  header.site-head h1{
+    font-size:clamp(20px,4vw,28px);
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--text);
+  }
+  header.site-head h1 span{color:var(--accent);}
+  header.site-head p{
+    margin-top:6px;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.04em;
+  }
+
+  main{
+    flex:1;
+    width:100%;
+    max-width:1400px;
+    margin:0 auto;
+    padding:10px 16px 40px;
+  }
+
+  .group{
+    margin-top:28px;
+  }
+  .group-header{
+    font-size:13px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 4px 14px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border);
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+    gap:12px;
+  }
+
+  .card{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:var(--radius);
+    overflow:hidden;
+    background:var(--card);
+    border:1px solid var(--border);
+    cursor:pointer;
+    transform:translateZ(0);
+    transition:transform .2s ease, border-color .2s ease;
+  }
+  .card:active{transform:scale(0.97);}
+  @media(hover:hover){
+    .card:hover{border-color:#3a3a42;}
+    .card:hover img{transform:scale(1.05);}
+  }
+
+  .card img, .card video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    opacity:0;
+    transition:opacity .35s ease, transform .4s ease;
+    background:var(--bg-elev);
+  }
+  .card img.loaded, .card video.loaded{opacity:1;}
+
+  .card .ph{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .card .ph::after{
+    content:"";
+    width:22px;height:22px;
+    border-radius:50%;
+    border:2px solid var(--border);
+    border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .play-badge{
+    position:absolute;
+    right:8px;
+    bottom:8px;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(2px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .play-badge svg{width:11px;height:11px;fill:#fff;margin-left:1px;}
+
+  /* Pagination */
+  nav.pager{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:6px;
+    padding:34px 16px 20px;
+  }
+  nav.pager button{
+    min-width:38px;
+    height:38px;
+    padding:0 10px;
+    border-radius:9px;
+    border:1px solid var(--border);
+    background:var(--bg-elev);
+    color:var(--text-dim);
+    font-size:13px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  nav.pager button:hover{border-color:#3a3a42;color:var(--text);}
+  nav.pager button.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#0a0a0c;
+    font-weight:700;
+  }
+  nav.pager button:disabled{opacity:0.35;cursor:default;}
+
+  footer.site-foot{
+    text-align:center;
+    padding:14px;
+    font-size:11px;
+    color:#55555c;
+    letter-spacing:0.05em;
+  }
+
+  /* Lightbox */
+  .lightbox{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    background:rgba(6,6,8,0.96);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .lightbox.open{display:flex;}
+  .lightbox img, .lightbox video{
+    max-width:100%;
+    max-height:100%;
+    border-radius:6px;
+    object-fit:contain;
+  }
+  .lightbox .lb-close{
+    position:absolute;
+    top:18px;
+    right:20px;
+    width:40px;height:40px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.08);
+    border:none;
+    color:#fff;
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .lightbox .lb-nav{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    width:46px;height:46px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.08);
+    border:none;
+    color:#fff;
+    font-size:20px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .lb-nav.prev{left:14px;}
+  .lb-nav.next{right:14px;}
+  @media(max-width:640px){
+    .lb-nav{width:38px;height:38px;font-size:16px;}
+  }
+  .lightbox .lb-count{
+    position:absolute;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.05em;
+  }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <h1>TUI <span>77</span></h1>
+  <p id="subCount"></p>
+</header>
+
+<main id="main"></main>
+
+<nav class="pager" id="pager"></nav>
+
+<footer class="site-foot">Gallery &middot; TUI 77</footer>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lbClose" aria-label="Close">&times;</button>
+  <button class="lb-nav prev" id="lbPrev" aria-label="Previous">&#8249;</button>
+  <button class="lb-nav next" id="lbNext" aria-label="Next">&#8250;</button>
+  <div id="lbStage"></div>
+  <div class="lb-count" id="lbCount"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // CONFIG
+  // ---------------------------------------------------------------
+  var BASE_URL = "https://raw.githubusercontent.com/InfiniteProfile/tui-77/main/";
+  var PAGE_SIZE = 150;
+
+  // Editable name map: map a filename (exact) OR an ID prefix (text before
+  // "_frame_" / before the extension) to a display name. When a name is
+  // added here, matching items will be grouped under a header with that
+  // name. Leave empty (as now) to render a plain, unheaded grid.
+  var NAME_MAP = {
+    // "1001041654": "Some Name",
+    // "FB_IMG_1789314284466.jpg": "Some Name"
+  };
+
+  // ---------------------------------------------------------------
+  // DATA  (file list only — no names were supplied with this batch)
+  // ---------------------------------------------------------------
+  var FILES = [{"file":"1001041654_frame_1.jpg","video":false},{"file":"1001041654_frame_10.jpg","video":false},{"file":"1001041654_frame_11.jpg","video":false},{"file":"1001041654_frame_12.jpg","video":false},{"file":"1001041654_frame_13.jpg","video":false},{"file":"1001041654_frame_14.jpg","video":false},{"file":"1001041654_frame_15.jpg","video":false},{"file":"1001041654_frame_16.jpg","video":false},{"file":"1001041654_frame_17.jpg","video":false},{"file":"1001041654_frame_18.jpg","video":false},{"file":"1001041654_frame_19.jpg","video":false},{"file":"1001041654_frame_2.jpg","video":false},{"file":"1001041654_frame_20.jpg","video":false},{"file":"1001041654_frame_21.jpg","video":false},{"file":"1001041654_frame_22.jpg","video":false},{"file":"1001041654_frame_23.jpg","video":false},{"file":"1001041654_frame_24.jpg","video":false},{"file":"1001041654_frame_25.jpg","video":false},{"file":"1001041654_frame_26.jpg","video":false},{"file":"1001041654_frame_27.jpg","video":false},{"file":"1001041654_frame_28.jpg","video":false},{"file":"1001041654_frame_29.jpg","video":false},{"file":"1001041654_frame_3.jpg","video":false},{"file":"1001041654_frame_30.jpg","video":false},{"file":"1001041654_frame_31.jpg","video":false},{"file":"1001041654_frame_32.jpg","video":false},{"file":"1001041654_frame_33.jpg","video":false},{"file":"1001041654_frame_34.jpg","video":false},{"file":"1001041654_frame_35.jpg","video":false},{"file":"1001041654_frame_36.jpg","video":false},{"file":"1001041654_frame_37.jpg","video":false},{"file":"1001041654_frame_38.jpg","video":false},{"file":"1001041654_frame_39.jpg","video":false},{"file":"1001041654_frame_4.jpg","video":false},{"file":"1001041654_frame_40.jpg","video":false},{"file":"1001041654_frame_41.jpg","video":false},{"file":"1001041654_frame_42.jpg","video":false},{"file":"1001041654_frame_43.jpg","video":false},{"file":"1001041654_frame_44.jpg","video":false},{"file":"1001041654_frame_45.jpg","video":false},{"file":"1001041654_frame_46.jpg","video":false},{"file":"1001041654_frame_47.jpg","video":false},{"file":"1001041654_frame_48.jpg","video":false},{"file":"1001041654_frame_5.jpg","video":false},{"file":"1001041654_frame_6.jpg","video":false},{"file":"1001041654_frame_7.jpg","video":false},{"file":"1001041654_frame_8.jpg","video":false},{"file":"1001041654_frame_9.jpg","video":false},{"file":"1001042567_frame_916.jpg","video":false},{"file":"1001042567_frame_917.jpg","video":false},{"file":"1001042567_frame_918.jpg","video":false},{"file":"1001042567_frame_919.jpg","video":false},{"file":"1001042567_frame_920.jpg","video":false},{"file":"1001042567_frame_921.jpg","video":false},{"file":"1001042567_frame_922.jpg","video":false},{"file":"1001042567_frame_923.jpg","video":false},{"file":"1001042567_frame_924.jpg","video":false},{"file":"1001042567_frame_925.jpg","video":false},{"file":"1001042567_frame_926.jpg","video":false},{"file":"1001042567_frame_927.jpg","video":false},{"file":"1001042567_frame_928.jpg","video":false},{"file":"1001042567_frame_929.jpg","video":false},{"file":"1001042567_frame_930.jpg","video":false},{"file":"1001042567_frame_931.jpg","video":false},{"file":"1001042567_frame_932.jpg","video":false},{"file":"1001042567_frame_933.jpg","video":false},{"file":"1001042567_frame_934.jpg","video":false},{"file":"1001042567_frame_935.jpg","video":false},{"file":"1001042567_frame_936.jpg","video":false},{"file":"1001042567_frame_937.jpg","video":false},{"file":"1001042567_frame_938.jpg","video":false},{"file":"1001042567_frame_939.jpg","video":false},{"file":"1001042567_frame_940.jpg","video":false},{"file":"1001042567_frame_941.jpg","video":false},{"file":"1001042567_frame_942.jpg","video":false},{"file":"1001042567_frame_943.jpg","video":false},{"file":"1001042567_frame_944.jpg","video":false},{"file":"1001042567_frame_945.jpg","video":false},{"file":"1001042567_frame_946.jpg","video":false},{"file":"1001042567_frame_947.jpg","video":false},{"file":"1001042567_frame_948.jpg","video":false},{"file":"1001042567_frame_949.jpg","video":false},{"file":"1001042567_frame_950.jpg","video":false},{"file":"1001042567_frame_951.jpg","video":false},{"file":"1001042567_frame_952.jpg","video":false},{"file":"1001042567_frame_953.jpg","video":false},{"file":"1001042567_frame_954.jpg","video":false},{"file":"1001042567_frame_955.jpg","video":false},{"file":"1001042567_frame_956.jpg","video":false},{"file":"1001042567_frame_957.jpg","video":false},{"file":"1001042567_frame_958.jpg","video":false},{"file":"1001042567_frame_959.jpg","video":false},{"file":"1001042567_frame_960.jpg","video":false},{"file":"1001042567_frame_961.jpg","video":false},{"file":"1001042567_frame_962.jpg","video":false},{"file":"1001042567_frame_963.jpg","video":false},{"file":"1001042567_frame_964.jpg","video":false},{"file":"1001042567_frame_965.jpg","video":false},{"file":"1001042567_frame_966.jpg","video":false},{"file":"1001045330_frame_1.jpg","video":false},{"file":"1001045330_frame_10.jpg","video":false},{"file":"1001045330_frame_100.jpg","video":false},{"file":"1001045330_frame_101.jpg","video":false},{"file":"1001045330_frame_102.jpg","video":false},{"file":"1001045330_frame_103.jpg","video":false},{"file":"1001045330_frame_104.jpg","video":false},{"file":"1001045330_frame_105.jpg","video":false},{"file":"1001045330_frame_106.jpg","video":false},{"file":"1001045330_frame_107.jpg","video":false},{"file":"1001045330_frame_108.jpg","video":false},{"file":"1001045330_frame_109.jpg","video":false},{"file":"1001045330_frame_110.jpg","video":false},{"file":"1001045330_frame_111.jpg","video":false},{"file":"1001045330_frame_112.jpg","video":false},{"file":"1001045330_frame_113.jpg","video":false},{"file":"1001045330_frame_114.jpg","video":false},{"file":"1001045330_frame_115.jpg","video":false},{"file":"1001045330_frame_116.jpg","video":false},{"file":"1001045330_frame_117.jpg","video":false},{"file":"1001045330_frame_118.jpg","video":false},{"file":"1001045330_frame_119.jpg","video":false},{"file":"1001045330_frame_12.jpg","video":false},{"file":"1001045330_frame_120.jpg","video":false},{"file":"1001045330_frame_121.jpg","video":false},{"file":"1001045330_frame_122.jpg","video":false},{"file":"1001045330_frame_123.jpg","video":false},{"file":"1001045330_frame_124.jpg","video":false},{"file":"1001045330_frame_125.jpg","video":false},{"file":"1001045330_frame_126.jpg","video":false},{"file":"1001045330_frame_127.jpg","video":false},{"file":"1001045330_frame_128.jpg","video":false},{"file":"1001045330_frame_129.jpg","video":false},{"file":"1001045330_frame_13.jpg","video":false},{"file":"1001045330_frame_130.jpg","video":false},{"file":"1001045330_frame_131.jpg","video":false},{"file":"1001045330_frame_132.jpg","video":false},{"file":"1001045330_frame_133.jpg","video":false},{"file":"1001045330_frame_134.jpg","video":false},{"file":"1001045330_frame_135.jpg","video":false},{"file":"1001045330_frame_136.jpg","video":false},{"file":"1001045330_frame_137.jpg","video":false},{"file":"1001045330_frame_138.jpg","video":false},{"file":"1001045330_frame_139.jpg","video":false},{"file":"1001045330_frame_14.jpg","video":false},{"file":"1001045330_frame_140.jpg","video":false},{"file":"1001045330_frame_141.jpg","video":false},{"file":"1001045330_frame_142.jpg","video":false},{"file":"1001045330_frame_143.jpg","video":false},{"file":"1001045330_frame_144.jpg","video":false},{"file":"1001045330_frame_145.jpg","video":false},{"file":"1001045330_frame_146.jpg","video":false},{"file":"1001045330_frame_147.jpg","video":false},{"file":"1001045330_frame_148.jpg","video":false},{"file":"1001045330_frame_149.jpg","video":false},{"file":"1001045330_frame_15.jpg","video":false},{"file":"1001045330_frame_150.jpg","video":false},{"file":"1001045330_frame_151.jpg","video":false},{"file":"1001045330_frame_152.jpg","video":false},{"file":"1001045330_frame_153.jpg","video":false},{"file":"1001045330_frame_154.jpg","video":false},{"file":"1001045330_frame_155.jpg","video":false},{"file":"1001045330_frame_156.jpg","video":false},{"file":"1001045330_frame_157.jpg","video":false},{"file":"1001045330_frame_158.jpg","video":false},{"file":"1001045330_frame_159.jpg","video":false},{"file":"1001045330_frame_16.jpg","video":false},{"file":"1001045330_frame_160.jpg","video":false},{"file":"1001045330_frame_161.jpg","video":false},{"file":"1001045330_frame_162.jpg","video":false},{"file":"1001045330_frame_163.jpg","video":false},{"file":"1001045330_frame_164.jpg","video":false},{"file":"1001045330_frame_165.jpg","video":false},{"file":"1001045330_frame_166.jpg","video":false},{"file":"1001045330_frame_167.jpg","video":false},{"file":"1001045330_frame_168.jpg","video":false},{"file":"1001045330_frame_169.jpg","video":false},{"file":"1001045330_frame_17.jpg","video":false},{"file":"1001045330_frame_170.jpg","video":false},{"file":"1001045330_frame_171.jpg","video":false},{"file":"1001045330_frame_172.jpg","video":false},{"file":"1001045330_frame_173.jpg","video":false},{"file":"1001045330_frame_174.jpg","video":false},{"file":"1001045330_frame_175.jpg","video":false},{"file":"1001045330_frame_176.jpg","video":false},{"file":"1001045330_frame_177.jpg","video":false},{"file":"1001045330_frame_178.jpg","video":false},{"file":"1001045330_frame_179.jpg","video":false},{"file":"1001045330_frame_18.jpg","video":false},{"file":"1001045330_frame_180.jpg","video":false},{"file":"1001045330_frame_181.jpg","video":false},{"file":"1001045330_frame_182.jpg","video":false},{"file":"1001045330_frame_183.jpg","video":false},{"file":"1001045330_frame_184.jpg","video":false},{"file":"1001045330_frame_185.jpg","video":false},{"file":"1001045330_frame_186.jpg","video":false},{"file":"1001045330_frame_187.jpg","video":false},{"file":"1001045330_frame_188.jpg","video":false},{"file":"1001045330_frame_189.jpg","video":false},{"file":"1001045330_frame_19.jpg","video":false},{"file":"1001045330_frame_190.jpg","video":false},{"file":"1001045330_frame_191.jpg","video":false},{"file":"1001045330_frame_192.jpg","video":false},{"file":"1001045330_frame_193.jpg","video":false},{"file":"1001045330_frame_194.jpg","video":false},{"file":"1001045330_frame_195.jpg","video":false},{"file":"1001045330_frame_196.jpg","video":false},{"file":"1001045330_frame_197.jpg","video":false},{"file":"1001045330_frame_198.jpg","video":false},{"file":"1001045330_frame_199.jpg","video":false},{"file":"1001045330_frame_2.jpg","video":false},{"file":"1001045330_frame_20.jpg","video":false},{"file":"1001045330_frame_200.jpg","video":false},{"file":"1001045330_frame_201.jpg","video":false},{"file":"1001045330_frame_202.jpg","video":false},{"file":"1001045330_frame_203.jpg","video":false},{"file":"1001045330_frame_204.jpg","video":false},{"file":"1001045330_frame_205.jpg","video":false},{"file":"1001045330_frame_206.jpg","video":false},{"file":"1001045330_frame_207.jpg","video":false},{"file":"1001045330_frame_208.jpg","video":false},{"file":"1001045330_frame_209.jpg","video":false},{"file":"1001045330_frame_21.jpg","video":false},{"file":"1001045330_frame_210.jpg","video":false},{"file":"1001045330_frame_211.jpg","video":false},{"file":"1001045330_frame_212.jpg","video":false},{"file":"1001045330_frame_213.jpg","video":false},{"file":"1001045330_frame_214.jpg","video":false},{"file":"1001045330_frame_215.jpg","video":false},{"file":"1001045330_frame_216.jpg","video":false},{"file":"1001045330_frame_217.jpg","video":false},{"file":"1001045330_frame_218.jpg","video":false},{"file":"1001045330_frame_219.jpg","video":false},{"file":"1001045330_frame_22.jpg","video":false},{"file":"1001045330_frame_220.jpg","video":false},{"file":"1001045330_frame_221.jpg","video":false},{"file":"1001045330_frame_222.jpg","video":false},{"file":"1001045330_frame_223.jpg","video":false},{"file":"1001045330_frame_224.jpg","video":false},{"file":"1001045330_frame_225.jpg","video":false},{"file":"1001045330_frame_226.jpg","video":false},{"file":"1001045330_frame_227.jpg","video":false},{"file":"1001045330_frame_228.jpg","video":false},{"file":"1001045330_frame_229.jpg","video":false},{"file":"1001045330_frame_23.jpg","video":false},{"file":"1001045330_frame_230.jpg","video":false},{"file":"1001045330_frame_231.jpg","video":false},{"file":"1001045330_frame_232.jpg","video":false},{"file":"1001045330_frame_233.jpg","video":false},{"file":"1001045330_frame_234.jpg","video":false},{"file":"1001045330_frame_235.jpg","video":false},{"file":"1001045330_frame_236.jpg","video":false},{"file":"1001045330_frame_237.jpg","video":false},{"file":"1001045330_frame_238.jpg","video":false},{"file":"1001045330_frame_239.jpg","video":false},{"file":"1001045330_frame_24.jpg","video":false},{"file":"1001045330_frame_240.jpg","video":false},{"file":"1001045330_frame_241.jpg","video":false},{"file":"1001045330_frame_242.jpg","video":false},{"file":"1001045330_frame_243.jpg","video":false},{"file":"1001045330_frame_244.jpg","video":false},{"file":"1001045330_frame_245.jpg","video":false},{"file":"1001045330_frame_246.jpg","video":false},{"file":"1001045330_frame_247.jpg","video":false},{"file":"1001045330_frame_248.jpg","video":false},{"file":"1001045330_frame_249.jpg","video":false},{"file":"1001045330_frame_25.jpg","video":false},{"file":"1001045330_frame_250.jpg","video":false},{"file":"1001045330_frame_251.jpg","video":false},{"file":"1001045330_frame_252.jpg","video":false},{"file":"1001045330_frame_253.jpg","video":false},{"file":"1001045330_frame_254.jpg","video":false},{"file":"1001045330_frame_255.jpg","video":false},{"file":"1001045330_frame_256.jpg","video":false},{"file":"1001045330_frame_257.jpg","video":false},{"file":"1001045330_frame_258.jpg","video":false},{"file":"1001045330_frame_259.jpg","video":false},{"file":"1001045330_frame_26.jpg","video":false},{"file":"1001045330_frame_260.jpg","video":false},{"file":"1001045330_frame_262.jpg","video":false},{"file":"1001045330_frame_263.jpg","video":false},{"file":"1001045330_frame_264.jpg","video":false},{"file":"1001045330_frame_265.jpg","video":false},{"file":"1001045330_frame_266.jpg","video":false},{"file":"1001045330_frame_267.jpg","video":false},{"file":"1001045330_frame_268.jpg","video":false},{"file":"1001045330_frame_269.jpg","video":false},{"file":"1001045330_frame_27.jpg","video":false},{"file":"1001045330_frame_270.jpg","video":false},{"file":"1001045330_frame_271.jpg","video":false},{"file":"1001045330_frame_272.jpg","video":false},{"file":"1001045330_frame_273.jpg","video":false},{"file":"1001045330_frame_274.jpg","video":false},{"file":"1001045330_frame_275.jpg","video":false},{"file":"1001045330_frame_276.jpg","video":false},{"file":"1001045330_frame_277.jpg","video":false},{"file":"1001045330_frame_278.jpg","video":false},{"file":"1001045330_frame_279.jpg","video":false},{"file":"1001045330_frame_28.jpg","video":false},{"file":"1001045330_frame_280.jpg","video":false},{"file":"1001045330_frame_281.jpg","video":false},{"file":"1001045330_frame_282.jpg","video":false},{"file":"1001045330_frame_283.jpg","video":false},{"file":"1001045330_frame_284.jpg","video":false},{"file":"1001045330_frame_285.jpg","video":false},{"file":"1001045330_frame_286.jpg","video":false},{"file":"1001045330_frame_287.jpg","video":false},{"file":"1001045330_frame_288.jpg","video":false},{"file":"1001045330_frame_289.jpg","video":false},{"file":"1001045330_frame_29.jpg","video":false},{"file":"1001045330_frame_290.jpg","video":false},{"file":"1001045330_frame_291.jpg","video":false},{"file":"1001045330_frame_292.jpg","video":false},{"file":"1001045330_frame_293.jpg","video":false},{"file":"1001045330_frame_294.jpg","video":false},{"file":"1001045330_frame_295.jpg","video":false},{"file":"1001045330_frame_296.jpg","video":false},{"file":"1001045330_frame_297.jpg","video":false},{"file":"1001045330_frame_298.jpg","video":false},{"file":"1001045330_frame_299.jpg","video":false},{"file":"1001045330_frame_3.jpg","video":false},{"file":"1001045330_frame_30.jpg","video":false},{"file":"1001045330_frame_300.jpg","video":false},{"file":"1001045330_frame_301.jpg","video":false},{"file":"1001045330_frame_302.jpg","video":false},{"file":"1001045330_frame_303.jpg","video":false},{"file":"1001045330_frame_304.jpg","video":false},{"file":"1001045330_frame_305.jpg","video":false},{"file":"1001045330_frame_306.jpg","video":false},{"file":"1001045330_frame_307.jpg","video":false},{"file":"1001045330_frame_308.jpg","video":false},{"file":"1001045330_frame_309.jpg","video":false},{"file":"1001045330_frame_31.jpg","video":false},{"file":"1001045330_frame_310.jpg","video":false},{"file":"1001045330_frame_32.jpg","video":false},{"file":"1001045330_frame_33.jpg","video":false},{"file":"1001045330_frame_34.jpg","video":false},{"file":"1001045330_frame_35.jpg","video":false},{"file":"1001045330_frame_36.jpg","video":false},{"file":"1001045330_frame_37.jpg","video":false},{"file":"1001045330_frame_38.jpg","video":false},{"file":"1001045330_frame_39.jpg","video":false},{"file":"1001045330_frame_4.jpg","video":false},{"file":"1001045330_frame_40.jpg","video":false},{"file":"1001045330_frame_41.jpg","video":false},{"file":"1001045330_frame_42.jpg","video":false},{"file":"1001045330_frame_43.jpg","video":false},{"file":"1001045330_frame_44.jpg","video":false},{"file":"1001045330_frame_45.jpg","video":false},{"file":"1001045330_frame_46.jpg","video":false},{"file":"1001045330_frame_47.jpg","video":false},{"file":"1001045330_frame_48.jpg","video":false},{"file":"1001045330_frame_49.jpg","video":false},{"file":"1001045330_frame_5.jpg","video":false},{"file":"1001045330_frame_50.jpg","video":false},{"file":"1001045330_frame_51.jpg","video":false},{"file":"1001045330_frame_52.jpg","video":false},{"file":"1001045330_frame_53.jpg","video":false},{"file":"1001045330_frame_54.jpg","video":false},{"file":"1001045330_frame_55.jpg","video":false},{"file":"1001045330_frame_56.jpg","video":false},{"file":"1001045330_frame_57.jpg","video":false},{"file":"1001045330_frame_58.jpg","video":false},{"file":"1001045330_frame_59.jpg","video":false},{"file":"1001045330_frame_6.jpg","video":false},{"file":"1001045330_frame_60.jpg","video":false},{"file":"1001045330_frame_61.jpg","video":false},{"file":"1001045330_frame_62.jpg","video":false},{"file":"1001045330_frame_63.jpg","video":false},{"file":"1001045330_frame_64.jpg","video":false},{"file":"1001045330_frame_65.jpg","video":false},{"file":"1001045330_frame_66.jpg","video":false},{"file":"1001045330_frame_67.jpg","video":false},{"file":"1001045330_frame_68.jpg","video":false},{"file":"1001045330_frame_69.jpg","video":false},{"file":"1001045330_frame_7.jpg","video":false},{"file":"1001045330_frame_70.jpg","video":false},{"file":"1001045330_frame_71.jpg","video":false},{"file":"1001045330_frame_72.jpg","video":false},{"file":"1001045330_frame_73.jpg","video":false},{"file":"1001045330_frame_74.jpg","video":false},{"file":"1001045330_frame_75.jpg","video":false},{"file":"1001045330_frame_76.jpg","video":false},{"file":"1001045330_frame_77.jpg","video":false},{"file":"1001045330_frame_78.jpg","video":false},{"file":"1001045330_frame_79.jpg","video":false},{"file":"1001045330_frame_8.jpg","video":false},{"file":"1001045330_frame_80.jpg","video":false},{"file":"1001045330_frame_81.jpg","video":false},{"file":"1001045330_frame_82.jpg","video":false},{"file":"1001045330_frame_83.jpg","video":false},{"file":"1001045330_frame_84.jpg","video":false},{"file":"1001045330_frame_85.jpg","video":false},{"file":"1001045330_frame_86.jpg","video":false},{"file":"1001045330_frame_87.jpg","video":false},{"file":"1001045330_frame_88.jpg","video":false},{"file":"1001045330_frame_89.jpg","video":false},{"file":"1001045330_frame_9.jpg","video":false},{"file":"1001045330_frame_90.jpg","video":false},{"file":"1001045330_frame_91.jpg","video":false},{"file":"1001045330_frame_92.jpg","video":false},{"file":"1001045330_frame_93.jpg","video":false},{"file":"1001045330_frame_94.jpg","video":false},{"file":"1001045330_frame_95.jpg","video":false},{"file":"1001045330_frame_96.jpg","video":false},{"file":"1001045330_frame_97.jpg","video":false},{"file":"1001045330_frame_98.jpg","video":false},{"file":"1001045330_frame_99.jpg","video":false},{"file":"1001045645_frame_1.jpg","video":false},{"file":"1001045645_frame_10.jpg","video":false},{"file":"1001045645_frame_11.jpg","video":false},{"file":"1001045645_frame_12.jpg","video":false},{"file":"1001045645_frame_13.jpg","video":false},{"file":"1001045645_frame_14.jpg","video":false},{"file":"1001045645_frame_15.jpg","video":false},{"file":"1001045645_frame_16.jpg","video":false},{"file":"1001045645_frame_17.jpg","video":false},{"file":"1001045645_frame_18.jpg","video":false},{"file":"1001045645_frame_19.jpg","video":false},{"file":"1001045645_frame_2.jpg","video":false},{"file":"1001045645_frame_20.jpg","video":false},{"file":"1001045645_frame_21.jpg","video":false},{"file":"1001045645_frame_22.jpg","video":false},{"file":"1001045645_frame_23.jpg","video":false},{"file":"1001045645_frame_24.jpg","video":false},{"file":"1001045645_frame_25.jpg","video":false},{"file":"1001045645_frame_26.jpg","video":false},{"file":"1001045645_frame_27.jpg","video":false},{"file":"1001045645_frame_28.jpg","video":false},{"file":"1001045645_frame_29.jpg","video":false},{"file":"1001045645_frame_3.jpg","video":false},{"file":"1001045645_frame_30.jpg","video":false},{"file":"1001045645_frame_31.jpg","video":false},{"file":"1001045645_frame_32.jpg","video":false},{"file":"1001045645_frame_33.jpg","video":false},{"file":"1001045645_frame_34.jpg","video":false},{"file":"1001045645_frame_35.jpg","video":false},{"file":"1001045645_frame_36.jpg","video":false},{"file":"1001045645_frame_37.jpg","video":false},{"file":"1001045645_frame_38.jpg","video":false},{"file":"1001045645_frame_39.jpg","video":false},{"file":"1001045645_frame_4.jpg","video":false},{"file":"1001045645_frame_40.jpg","video":false},{"file":"1001045645_frame_41.jpg","video":false},{"file":"1001045645_frame_42.jpg","video":false},{"file":"1001045645_frame_43.jpg","video":false},{"file":"1001045645_frame_44.jpg","video":false},{"file":"1001045645_frame_45.jpg","video":false},{"file":"1001045645_frame_46.jpg","video":false},{"file":"1001045645_frame_47.jpg","video":false},{"file":"1001045645_frame_48.jpg","video":false},{"file":"1001045645_frame_49.jpg","video":false},{"file":"1001045645_frame_5.jpg","video":false},{"file":"1001045645_frame_50.jpg","video":false},{"file":"1001045645_frame_51.jpg","video":false},{"file":"1001045645_frame_52.jpg","video":false},{"file":"1001045645_frame_53.jpg","video":false},{"file":"1001045645_frame_54.jpg","video":false},{"file":"1001045645_frame_55.jpg","video":false},{"file":"1001045645_frame_56.jpg","video":false},{"file":"1001045645_frame_57.jpg","video":false},{"file":"1001045645_frame_58.jpg","video":false},{"file":"1001045645_frame_59.jpg","video":false},{"file":"1001045645_frame_6.jpg","video":false},{"file":"1001045645_frame_60.jpg","video":false},{"file":"1001045645_frame_61.jpg","video":false},{"file":"1001045645_frame_62.jpg","video":false},{"file":"1001045645_frame_63.jpg","video":false},{"file":"1001045645_frame_64.jpg","video":false},{"file":"1001045645_frame_65.jpg","video":false},{"file":"1001045645_frame_66.jpg","video":false},{"file":"1001045645_frame_67.jpg","video":false},{"file":"1001045645_frame_68.jpg","video":false},{"file":"1001045645_frame_69.jpg","video":false},{"file":"1001045645_frame_7.jpg","video":false},{"file":"1001045645_frame_70.jpg","video":false},{"file":"1001045645_frame_8.jpg","video":false},{"file":"1001045645_frame_9.jpg","video":false},{"file":"1001049544_frame_1.jpg","video":false},{"file":"1001049544_frame_10.jpg","video":false},{"file":"1001049544_frame_100.jpg","video":false},{"file":"1001049544_frame_101.jpg","video":false},{"file":"1001049544_frame_102.jpg","video":false},{"file":"1001049544_frame_103.jpg","video":false},{"file":"1001049544_frame_104.jpg","video":false},{"file":"1001049544_frame_105.jpg","video":false},{"file":"1001049544_frame_106.jpg","video":false},{"file":"1001049544_frame_107.jpg","video":false},{"file":"1001049544_frame_108.jpg","video":false},{"file":"1001049544_frame_109.jpg","video":false},{"file":"1001049544_frame_11.jpg","video":false},{"file":"1001049544_frame_110.jpg","video":false},{"file":"1001049544_frame_111.jpg","video":false},{"file":"1001049544_frame_112.jpg","video":false},{"file":"1001049544_frame_113.jpg","video":false},{"file":"1001049544_frame_114.jpg","video":false},{"file":"1001049544_frame_115.jpg","video":false},{"file":"1001049544_frame_116.jpg","video":false},{"file":"1001049544_frame_117.jpg","video":false},{"file":"1001049544_frame_118.jpg","video":false},{"file":"1001049544_frame_119.jpg","video":false},{"file":"1001049544_frame_12.jpg","video":false},{"file":"1001049544_frame_120.jpg","video":false},{"file":"1001049544_frame_121.jpg","video":false},{"file":"1001049544_frame_122.jpg","video":false},{"file":"1001049544_frame_123.jpg","video":false},{"file":"1001049544_frame_124.jpg","video":false},{"file":"1001049544_frame_125.jpg","video":false},{"file":"1001049544_frame_126.jpg","video":false},{"file":"1001049544_frame_127.jpg","video":false},{"file":"1001049544_frame_128.jpg","video":false},{"file":"1001049544_frame_129.jpg","video":false},{"file":"1001049544_frame_13.jpg","video":false},{"file":"1001049544_frame_130.jpg","video":false},{"file":"1001049544_frame_14.jpg","video":false},{"file":"1001049544_frame_15.jpg","video":false},{"file":"1001049544_frame_16.jpg","video":false},{"file":"1001049544_frame_17.jpg","video":false},{"file":"1001049544_frame_18.jpg","video":false},{"file":"1001049544_frame_19.jpg","video":false},{"file":"1001049544_frame_2.jpg","video":false},{"file":"1001049544_frame_20.jpg","video":false},{"file":"1001049544_frame_21.jpg","video":false},{"file":"1001049544_frame_22.jpg","video":false},{"file":"1001049544_frame_23.jpg","video":false},{"file":"1001049544_frame_24.jpg","video":false},{"file":"1001049544_frame_25.jpg","video":false},{"file":"1001049544_frame_26.jpg","video":false},{"file":"1001049544_frame_27.jpg","video":false},{"file":"1001049544_frame_28.jpg","video":false},{"file":"1001049544_frame_29.jpg","video":false},{"file":"1001049544_frame_3.jpg","video":false},{"file":"1001049544_frame_30.jpg","video":false},{"file":"1001049544_frame_31.jpg","video":false},{"file":"1001049544_frame_32.jpg","video":false},{"file":"1001049544_frame_33.jpg","video":false},{"file":"1001049544_frame_34.jpg","video":false},{"file":"1001049544_frame_35.jpg","video":false},{"file":"1001049544_frame_36.jpg","video":false},{"file":"1001049544_frame_37.jpg","video":false},{"file":"1001049544_frame_38.jpg","video":false},{"file":"1001049544_frame_39.jpg","video":false},{"file":"1001049544_frame_4.jpg","video":false},{"file":"1001049544_frame_40.jpg","video":false},{"file":"1001049544_frame_41.jpg","video":false},{"file":"1001049544_frame_42.jpg","video":false},{"file":"1001049544_frame_43.jpg","video":false},{"file":"1001049544_frame_44.jpg","video":false},{"file":"1001049544_frame_45.jpg","video":false},{"file":"1001049544_frame_46.jpg","video":false},{"file":"1001049544_frame_47.jpg","video":false},{"file":"1001049544_frame_48.jpg","video":false},{"file":"1001049544_frame_49.jpg","video":false},{"file":"1001049544_frame_5.jpg","video":false},{"file":"1001049544_frame_50.jpg","video":false},{"file":"1001049544_frame_51.jpg","video":false},{"file":"1001049544_frame_52.jpg","video":false},{"file":"1001049544_frame_53.jpg","video":false},{"file":"1001049544_frame_54.jpg","video":false},{"file":"1001049544_frame_55.jpg","video":false},{"file":"1001049544_frame_56.jpg","video":false},{"file":"1001049544_frame_57.jpg","video":false},{"file":"1001049544_frame_58.jpg","video":false},{"file":"1001049544_frame_59.jpg","video":false},{"file":"1001049544_frame_6.jpg","video":false},{"file":"1001049544_frame_60.jpg","video":false},{"file":"1001049544_frame_61.jpg","video":false},{"file":"1001049544_frame_62.jpg","video":false},{"file":"1001049544_frame_63.jpg","video":false},{"file":"1001049544_frame_64.jpg","video":false},{"file":"1001049544_frame_65.jpg","video":false},{"file":"1001049544_frame_66.jpg","video":false},{"file":"1001049544_frame_67.jpg","video":false},{"file":"1001049544_frame_68.jpg","video":false},{"file":"1001049544_frame_69.jpg","video":false},{"file":"1001049544_frame_7.jpg","video":false},{"file":"1001049544_frame_70.jpg","video":false},{"file":"1001049544_frame_71.jpg","video":false},{"file":"1001049544_frame_72.jpg","video":false},{"file":"1001049544_frame_73.jpg","video":false},{"file":"1001049544_frame_74.jpg","video":false},{"file":"1001049544_frame_75.jpg","video":false},{"file":"1001049544_frame_76.jpg","video":false},{"file":"1001049544_frame_77.jpg","video":false},{"file":"1001049544_frame_78.jpg","video":false},{"file":"1001049544_frame_79.jpg","video":false},{"file":"1001049544_frame_8.jpg","video":false},{"file":"1001049544_frame_80.jpg","video":false},{"file":"1001049544_frame_81.jpg","video":false},{"file":"1001049544_frame_82.jpg","video":false},{"file":"1001049544_frame_83.jpg","video":false},{"file":"1001049544_frame_84.jpg","video":false},{"file":"1001049544_frame_85.jpg","video":false},{"file":"1001049544_frame_86.jpg","video":false},{"file":"1001049544_frame_87.jpg","video":false},{"file":"1001049544_frame_88.jpg","video":false},{"file":"1001049544_frame_89.jpg","video":false},{"file":"1001049544_frame_9.jpg","video":false},{"file":"1001049544_frame_90.jpg","video":false},{"file":"1001049544_frame_91.jpg","video":false},{"file":"1001049544_frame_92.jpg","video":false},{"file":"1001049544_frame_93.jpg","video":false},{"file":"1001049544_frame_94.jpg","video":false},{"file":"1001049544_frame_95.jpg","video":false},{"file":"1001049544_frame_96.jpg","video":false},{"file":"1001049544_frame_97.jpg","video":false},{"file":"1001049544_frame_98.jpg","video":false},{"file":"1001049544_frame_99.jpg","video":false},{"file":"1001052014_frame_1.jpg","video":false},{"file":"1001052014_frame_10.jpg","video":false},{"file":"1001052014_frame_100.jpg","video":false},{"file":"1001052014_frame_101.jpg","video":false},{"file":"1001052014_frame_102.jpg","video":false},{"file":"1001052014_frame_103.jpg","video":false},{"file":"1001052014_frame_104.jpg","video":false},{"file":"1001052014_frame_105.jpg","video":false},{"file":"1001052014_frame_106.jpg","video":false},{"file":"1001052014_frame_107.jpg","video":false},{"file":"1001052014_frame_108.jpg","video":false},{"file":"1001052014_frame_109.jpg","video":false},{"file":"1001052014_frame_11.jpg","video":false},{"file":"1001052014_frame_110.jpg","video":false},{"file":"1001052014_frame_111.jpg","video":false},{"file":"1001052014_frame_112.jpg","video":false},{"file":"1001052014_frame_113.jpg","video":false},{"file":"1001052014_frame_114.jpg","video":false},{"file":"1001052014_frame_115.jpg","video":false},{"file":"1001052014_frame_116.jpg","video":false},{"file":"1001052014_frame_117.jpg","video":false},{"file":"1001052014_frame_118.jpg","video":false},{"file":"1001052014_frame_119.jpg","video":false},{"file":"1001052014_frame_12.jpg","video":false},{"file":"1001052014_frame_120.jpg","video":false},{"file":"1001052014_frame_121.jpg","video":false},{"file":"1001052014_frame_122.jpg","video":false},{"file":"1001052014_frame_123.jpg","video":false},{"file":"1001052014_frame_124.jpg","video":false},{"file":"1001052014_frame_125.jpg","video":false},{"file":"1001052014_frame_126.jpg","video":false},{"file":"1001052014_frame_127.jpg","video":false},{"file":"1001052014_frame_128.jpg","video":false},{"file":"1001052014_frame_129.jpg","video":false},{"file":"1001052014_frame_13.jpg","video":false},{"file":"1001052014_frame_130.jpg","video":false},{"file":"1001052014_frame_131.jpg","video":false},{"file":"1001052014_frame_132.jpg","video":false},{"file":"1001052014_frame_133.jpg","video":false},{"file":"1001052014_frame_134.jpg","video":false},{"file":"1001052014_frame_135.jpg","video":false},{"file":"1001052014_frame_136.jpg","video":false},{"file":"1001052014_frame_137.jpg","video":false},{"file":"1001052014_frame_138.jpg","video":false},{"file":"1001052014_frame_139.jpg","video":false},{"file":"1001052014_frame_14.jpg","video":false},{"file":"1001052014_frame_140.jpg","video":false},{"file":"1001052014_frame_141.jpg","video":false},{"file":"1001052014_frame_142.jpg","video":false},{"file":"1001052014_frame_143.jpg","video":false},{"file":"1001052014_frame_144.jpg","video":false},{"file":"1001052014_frame_145.jpg","video":false},{"file":"1001052014_frame_146.jpg","video":false},{"file":"1001052014_frame_147.jpg","video":false},{"file":"1001052014_frame_148.jpg","video":false},{"file":"1001052014_frame_149.jpg","video":false},{"file":"1001052014_frame_15.jpg","video":false},{"file":"1001052014_frame_150.jpg","video":false},{"file":"1001052014_frame_151.jpg","video":false},{"file":"1001052014_frame_152.jpg","video":false},{"file":"1001052014_frame_153.jpg","video":false},{"file":"1001052014_frame_154.jpg","video":false},{"file":"1001052014_frame_155.jpg","video":false},{"file":"1001052014_frame_156.jpg","video":false},{"file":"1001052014_frame_157.jpg","video":false},{"file":"1001052014_frame_158.jpg","video":false},{"file":"1001052014_frame_159.jpg","video":false},{"file":"1001052014_frame_16.jpg","video":false},{"file":"1001052014_frame_160.jpg","video":false},{"file":"1001052014_frame_17.jpg","video":false},{"file":"1001052014_frame_18.jpg","video":false},{"file":"1001052014_frame_19.jpg","video":false},{"file":"1001052014_frame_2.jpg","video":false},{"file":"1001052014_frame_20.jpg","video":false},{"file":"1001052014_frame_21.jpg","video":false},{"file":"1001052014_frame_22.jpg","video":false},{"file":"1001052014_frame_23.jpg","video":false},{"file":"1001052014_frame_24.jpg","video":false},{"file":"1001052014_frame_25.jpg","video":false},{"file":"1001052014_frame_26.jpg","video":false},{"file":"1001052014_frame_27.jpg","video":false},{"file":"1001052014_frame_28.jpg","video":false},{"file":"1001052014_frame_29.jpg","video":false},{"file":"1001052014_frame_3.jpg","video":false},{"file":"1001052014_frame_30.jpg","video":false},{"file":"1001052014_frame_31.jpg","video":false},{"file":"1001052014_frame_32.jpg","video":false},{"file":"1001052014_frame_33.jpg","video":false},{"file":"1001052014_frame_34.jpg","video":false},{"file":"1001052014_frame_35.jpg","video":false},{"file":"1001052014_frame_36.jpg","video":false},{"file":"1001052014_frame_37.jpg","video":false},{"file":"1001052014_frame_38.jpg","video":false},{"file":"1001052014_frame_39.jpg","video":false},{"file":"1001052014_frame_4.jpg","video":false},{"file":"1001052014_frame_40.jpg","video":false},{"file":"1001052014_frame_41.jpg","video":false},{"file":"1001052014_frame_42.jpg","video":false},{"file":"1001052014_frame_43.jpg","video":false},{"file":"1001052014_frame_44.jpg","video":false},{"file":"1001052014_frame_45.jpg","video":false},{"file":"1001052014_frame_46.jpg","video":false},{"file":"1001052014_frame_47.jpg","video":false},{"file":"1001052014_frame_48.jpg","video":false},{"file":"1001052014_frame_49.jpg","video":false},{"file":"1001052014_frame_5.jpg","video":false},{"file":"1001052014_frame_50.jpg","video":false},{"file":"1001052014_frame_51.jpg","video":false},{"file":"1001052014_frame_52.jpg","video":false},{"file":"1001052014_frame_53.jpg","video":false},{"file":"1001052014_frame_54.jpg","video":false},{"file":"1001052014_frame_55.jpg","video":false},{"file":"1001052014_frame_56.jpg","video":false},{"file":"1001052014_frame_57.jpg","video":false},{"file":"1001052014_frame_58.jpg","video":false},{"file":"1001052014_frame_59.jpg","video":false},{"file":"1001052014_frame_6.jpg","video":false},{"file":"1001052014_frame_60.jpg","video":false},{"file":"1001052014_frame_61.jpg","video":false},{"file":"1001052014_frame_62.jpg","video":false},{"file":"1001052014_frame_63.jpg","video":false},{"file":"1001052014_frame_64.jpg","video":false},{"file":"1001052014_frame_65.jpg","video":false},{"file":"1001052014_frame_66.jpg","video":false},{"file":"1001052014_frame_67.jpg","video":false},{"file":"1001052014_frame_68.jpg","video":false},{"file":"1001052014_frame_69.jpg","video":false},{"file":"1001052014_frame_7.jpg","video":false},{"file":"1001052014_frame_70.jpg","video":false},{"file":"1001052014_frame_71.jpg","video":false},{"file":"1001052014_frame_72.jpg","video":false},{"file":"1001052014_frame_73.jpg","video":false},{"file":"1001052014_frame_74.jpg","video":false},{"file":"1001052014_frame_75.jpg","video":false},{"file":"1001052014_frame_76.jpg","video":false},{"file":"1001052014_frame_77.jpg","video":false},{"file":"1001052014_frame_78.jpg","video":false},{"file":"1001052014_frame_79.jpg","video":false},{"file":"1001052014_frame_8.jpg","video":false},{"file":"1001052014_frame_80.jpg","video":false},{"file":"1001052014_frame_81.jpg","video":false},{"file":"1001052014_frame_82.jpg","video":false},{"file":"1001052014_frame_83.jpg","video":false},{"file":"1001052014_frame_84.jpg","video":false},{"file":"1001052014_frame_85.jpg","video":false},{"file":"1001052014_frame_86.jpg","video":false},{"file":"1001052014_frame_87.jpg","video":false},{"file":"1001052014_frame_88.jpg","video":false},{"file":"1001052014_frame_89.jpg","video":false},{"file":"1001052014_frame_9.jpg","video":false},{"file":"1001052014_frame_90.jpg","video":false},{"file":"1001052014_frame_91.jpg","video":false},{"file":"1001052014_frame_92.jpg","video":false},{"file":"1001052014_frame_93.jpg","video":false},{"file":"1001052014_frame_94.jpg","video":false},{"file":"1001052014_frame_95.jpg","video":false},{"file":"1001052014_frame_96.jpg","video":false},{"file":"1001052014_frame_97.jpg","video":false},{"file":"1001052014_frame_98.jpg","video":false},{"file":"1001052014_frame_99.jpg","video":false},{"file":"1001052185_frame_420.jpg","video":false},{"file":"1001052185_frame_422.jpg","video":false},{"file":"1001052185_frame_423.jpg","video":false},{"file":"1001052185_frame_424.jpg","video":false},{"file":"1001052185_frame_425.jpg","video":false},{"file":"1001052185_frame_426.jpg","video":false},{"file":"1001052185_frame_427.jpg","video":false},{"file":"1001052185_frame_428.jpg","video":false},{"file":"1001052185_frame_429.jpg","video":false},{"file":"1001052185_frame_430.jpg","video":false},{"file":"1001052185_frame_431.jpg","video":false},{"file":"1001052185_frame_432.jpg","video":false},{"file":"1001052185_frame_433.jpg","video":false},{"file":"1001052185_frame_434.jpg","video":false},{"file":"1001052185_frame_435.jpg","video":false},{"file":"1001052185_frame_436.jpg","video":false},{"file":"1001052185_frame_437.jpg","video":false},{"file":"1001052185_frame_438.jpg","video":false},{"file":"1001052185_frame_439.jpg","video":false},{"file":"1001052185_frame_440.jpg","video":false},{"file":"1001052185_frame_441.jpg","video":false},{"file":"1001052185_frame_442.jpg","video":false},{"file":"1001052185_frame_443.jpg","video":false},{"file":"1001052185_frame_444.jpg","video":false},{"file":"1001052185_frame_445.jpg","video":false},{"file":"1001052185_frame_446.jpg","video":false},{"file":"1001052185_frame_447.jpg","video":false},{"file":"1001052185_frame_448.jpg","video":false},{"file":"1001052185_frame_449.jpg","video":false},{"file":"1001052185_frame_450.jpg","video":false},{"file":"1001052185_frame_451.jpg","video":false},{"file":"1001052185_frame_452.jpg","video":false},{"file":"1001052185_frame_453.jpg","video":false},{"file":"1001052185_frame_454.jpg","video":false},{"file":"1001052185_frame_455.jpg","video":false},{"file":"1001052185_frame_456.jpg","video":false},{"file":"1001052185_frame_457.jpg","video":false},{"file":"1001052185_frame_458.jpg","video":false},{"file":"1001052185_frame_459.jpg","video":false},{"file":"1001052185_frame_460.jpg","video":false},{"file":"1001052185_frame_461.jpg","video":false},{"file":"1001052185_frame_462.jpg","video":false},{"file":"1001052185_frame_463.jpg","video":false},{"file":"1001052185_frame_464.jpg","video":false},{"file":"1001052185_frame_465.jpg","video":false},{"file":"1001052185_frame_466.jpg","video":false},{"file":"1001052185_frame_467.jpg","video":false},{"file":"1001052185_frame_468.jpg","video":false},{"file":"1001052185_frame_469.jpg","video":false},{"file":"1001052185_frame_470.jpg","video":false},{"file":"1001052185_frame_471.jpg","video":false},{"file":"1001052185_frame_472.jpg","video":false},{"file":"1001052185_frame_473.jpg","video":false},{"file":"1001052185_frame_474.jpg","video":false},{"file":"1001052185_frame_475.jpg","video":false},{"file":"1001052185_frame_476.jpg","video":false},{"file":"1001052185_frame_477.jpg","video":false},{"file":"1001052185_frame_478.jpg","video":false},{"file":"1001052185_frame_479.jpg","video":false},{"file":"1001052185_frame_480.jpg","video":false},{"file":"1001052185_frame_481.jpg","video":false},{"file":"1001052185_frame_482.jpg","video":false},{"file":"1001052185_frame_483.jpg","video":false},{"file":"1001052185_frame_484.jpg","video":false},{"file":"1001052185_frame_485.jpg","video":false},{"file":"1001052185_frame_486.jpg","video":false},{"file":"1001052185_frame_487.jpg","video":false},{"file":"1001052185_frame_488.jpg","video":false},{"file":"1001052185_frame_489.jpg","video":false},{"file":"1001052185_frame_490.jpg","video":false},{"file":"1001052185_frame_491.jpg","video":false},{"file":"1001052185_frame_492.jpg","video":false},{"file":"1001052185_frame_493.jpg","video":false},{"file":"1001052185_frame_494.jpg","video":false},{"file":"1001052185_frame_495.jpg","video":false},{"file":"1001052185_frame_496.jpg","video":false},{"file":"1001052185_frame_497.jpg","video":false},{"file":"1001052185_frame_498.jpg","video":false},{"file":"1001052185_frame_499.jpg","video":false},{"file":"1001052185_frame_500.jpg","video":false},{"file":"1001052185_frame_501.jpg","video":false},{"file":"1001052185_frame_502.jpg","video":false},{"file":"1001052185_frame_503.jpg","video":false},{"file":"1001052185_frame_504.jpg","video":false},{"file":"1001052185_frame_505.jpg","video":false},{"file":"1001052185_frame_506.jpg","video":false},{"file":"1001052185_frame_507.jpg","video":false},{"file":"1001052185_frame_508.jpg","video":false},{"file":"1001052185_frame_509.jpg","video":false},{"file":"1001052185_frame_510.jpg","video":false},{"file":"1001052185_frame_511.jpg","video":false},{"file":"1001052185_frame_512.jpg","video":false},{"file":"1001052185_frame_513.jpg","video":false},{"file":"1001052185_frame_514.jpg","video":false},{"file":"1001052185_frame_515.jpg","video":false},{"file":"1001052185_frame_516.jpg","video":false},{"file":"1001052185_frame_517.jpg","video":false},{"file":"1001052185_frame_518.jpg","video":false},{"file":"1001052185_frame_519.jpg","video":false},{"file":"1001052185_frame_520.jpg","video":false},{"file":"1001052185_frame_521.jpg","video":false},{"file":"1001052185_frame_522.jpg","video":false},{"file":"1001052185_frame_523.jpg","video":false},{"file":"1001052185_frame_524.jpg","video":false},{"file":"1001052185_frame_525.jpg","video":false},{"file":"1001052185_frame_526.jpg","video":false},{"file":"1001052185_frame_527.jpg","video":false},{"file":"1001052185_frame_528.jpg","video":false},{"file":"1001052185_frame_529.jpg","video":false},{"file":"1001052185_frame_530.jpg","video":false},{"file":"4_5849468951452453684.mp4","video":true},{"file":"AQMebWBnKTj5uitoi20gJoZOeQCyBpC3eTzf_2uK0819t8GkG-kdb8-1AxQZ8QxwFox9dYygbevfXxHehIaibiysj3fUDzePmFnwqADo2A.mp4","video":true},{"file":"CvDUEd74cgVEmpn4.mp4","video":true},{"file":"FB_IMG_1788957630286.jpg","video":false},{"file":"FB_IMG_1788957632357.jpg","video":false},{"file":"FB_IMG_1789186967288.jpg","video":false},{"file":"FB_IMG_1789186969101.jpg","video":false},{"file":"FB_IMG_1789186971168.jpg","video":false},{"file":"FB_IMG_1789186973134.jpg","video":false},{"file":"FB_IMG_1789186975172.jpg","video":false},{"file":"FB_IMG_1789186977217.jpg","video":false},{"file":"FB_IMG_1789186979266.jpg","video":false},{"file":"FB_IMG_1789186981237.jpg","video":false},{"file":"FB_IMG_1789186983870.jpg","video":false},{"file":"FB_IMG_1789186985837.jpg","video":false},{"file":"FB_IMG_1789186988387.jpg","video":false},{"file":"FB_IMG_1789186991269.jpg","video":false},{"file":"FB_IMG_1789186993308.jpg","video":false},{"file":"FB_IMG_1789186995383.jpg","video":false},{"file":"FB_IMG_1789186997383.jpg","video":false},{"file":"FB_IMG_1789186999334.jpg","video":false},{"file":"FB_IMG_1789187001433.jpg","video":false},{"file":"FB_IMG_1789187003301.jpg","video":false},{"file":"FB_IMG_1789187005301.jpg","video":false},{"file":"FB_IMG_1789187007300.jpg","video":false},{"file":"FB_IMG_1789187009234.jpg","video":false},{"file":"FB_IMG_1789187011153.jpg","video":false},{"file":"FB_IMG_1789187013937.jpg","video":false},{"file":"FB_IMG_1789187018467.jpg","video":false},{"file":"FB_IMG_1789187020601.jpg","video":false},{"file":"FB_IMG_1789187022516.jpg","video":false},{"file":"FB_IMG_1789187024451.jpg","video":false},{"file":"FB_IMG_1789187026520.jpg","video":false},{"file":"FB_IMG_1789187028467.jpg","video":false},{"file":"FB_IMG_1789187030433.jpg","video":false},{"file":"FB_IMG_1789187032438.jpg","video":false},{"file":"FB_IMG_1789187035020.jpg","video":false},{"file":"FB_IMG_1789187037002.jpg","video":false},{"file":"FB_IMG_1789187038900.jpg","video":false},{"file":"FB_IMG_1789187040884.jpg","video":false},{"file":"FB_IMG_1789187042969.jpg","video":false},{"file":"FB_IMG_1789187045120.jpg","video":false},{"file":"FB_IMG_1789187047069.jpg","video":false},{"file":"FB_IMG_1789187049151.jpg","video":false},{"file":"FB_IMG_1789187053302.jpg","video":false},{"file":"FB_IMG_1789187055252.jpg","video":false},{"file":"FB_IMG_1789187057283.jpg","video":false},{"file":"FB_IMG_1789187059372.jpg","video":false},{"file":"FB_IMG_1789187061324.jpg","video":false},{"file":"FB_IMG_1789187063301.jpg","video":false},{"file":"FB_IMG_1789187065519.jpg","video":false},{"file":"FB_IMG_1789187067617.jpg","video":false},{"file":"FB_IMG_1789187069569.jpg","video":false},{"file":"FB_IMG_1789187071401.jpg","video":false},{"file":"FB_IMG_1789187073388.jpg","video":false},{"file":"FB_IMG_1789187076134.jpg","video":false},{"file":"FB_IMG_1789187078052.jpg","video":false},{"file":"FB_IMG_1789187080101.jpg","video":false},{"file":"FB_IMG_1789187082101.jpg","video":false},{"file":"FB_IMG_1789187084121.jpg","video":false},{"file":"FB_IMG_1789187086083.jpg","video":false},{"file":"FB_IMG_1789187087989.jpg","video":false},{"file":"FB_IMG_1789187091804.jpg","video":false},{"file":"FB_IMG_1789187093583.jpg","video":false},{"file":"FB_IMG_1789187095967.jpg","video":false},{"file":"FB_IMG_1789187097859.jpg","video":false},{"file":"FB_IMG_1789187099785.jpg","video":false},{"file":"FB_IMG_1789187101583.jpg","video":false},{"file":"FB_IMG_1789187104200.jpg","video":false},{"file":"FB_IMG_1789187106149.jpg","video":false},{"file":"FB_IMG_1789187108734.jpg","video":false},{"file":"FB_IMG_1789187110718.jpg","video":false},{"file":"FB_IMG_1789187112688.jpg","video":false},{"file":"FB_IMG_1789187114688.jpg","video":false},{"file":"FB_IMG_1789187116601.jpg","video":false},{"file":"FB_IMG_1789187119016.jpg","video":false},{"file":"FB_IMG_1789187121039.jpg","video":false},{"file":"FB_IMG_1789187123175.jpg","video":false},{"file":"FB_IMG_1789187125108.jpg","video":false},{"file":"FB_IMG_1789187127051.jpg","video":false},{"file":"FB_IMG_1789187128933.jpg","video":false},{"file":"FB_IMG_1789187130901.jpg","video":false},{"file":"FB_IMG_1789187132868.jpg","video":false},{"file":"FB_IMG_1789187134651.jpg","video":false},{"file":"FB_IMG_1789187137350.jpg","video":false},{"file":"FB_IMG_1789187139303.jpg","video":false},{"file":"FB_IMG_1789187141184.jpg","video":false},{"file":"FB_IMG_1789187143238.jpg","video":false},{"file":"FB_IMG_1789187145251.jpg","video":false},{"file":"FB_IMG_1789187147250.jpg","video":false},{"file":"FB_IMG_1789187149501.jpg","video":false},{"file":"FB_IMG_1789187151502.jpg","video":false},{"file":"FB_IMG_1789187153486.jpg","video":false},{"file":"FB_IMG_1789187156119.jpg","video":false},{"file":"FB_IMG_1789187158018.jpg","video":false},{"file":"FB_IMG_1789187159886.jpg","video":false},{"file":"FB_IMG_1789187161834.jpg","video":false},{"file":"FB_IMG_1789187163904.jpg","video":false},{"file":"FB_IMG_1789187165835.jpg","video":false},{"file":"FB_IMG_1789187168001.jpg","video":false},{"file":"FB_IMG_1789187172150.jpg","video":false},{"file":"FB_IMG_1789187174070.jpg","video":false},{"file":"FB_IMG_1789187175918.jpg","video":false},{"file":"FB_IMG_1789187177769.jpg","video":false},{"file":"FB_IMG_1789187179804.jpg","video":false},{"file":"FB_IMG_1789187181684.jpg","video":false},{"file":"FB_IMG_1789187183718.jpg","video":false},{"file":"FB_IMG_1789187185934.jpg","video":false},{"file":"FB_IMG_1789187188037.jpg","video":false},{"file":"FB_IMG_1789187190200.jpg","video":false},{"file":"FB_IMG_1789224654040.jpg","video":false},{"file":"FB_IMG_1789224656236.jpg","video":false},{"file":"FB_IMG_1789314264173.jpg","video":false},{"file":"FB_IMG_1789314266347.jpg","video":false},{"file":"FB_IMG_1789314268358.jpg","video":false},{"file":"FB_IMG_1789314271222.jpg","video":false},{"file":"FB_IMG_1789314273260.jpg","video":false},{"file":"FB_IMG_1789314275100.jpg","video":false},{"file":"FB_IMG_1789314276846.jpg","video":false},{"file":"FB_IMG_1789314280380.jpg","video":false},{"file":"FB_IMG_1789314281109.jpg","video":false},{"file":"FB_IMG_1789314282044.jpg","video":false},{"file":"FB_IMG_1789314284466.jpg","video":false}];
+
+  // ---------------------------------------------------------------
+  // Build grouped item list (group label applied per NAME_MAP, using the
+  // "keep under last active header" rule described in the spec)
+  // ---------------------------------------------------------------
+  function prefixOf(file){
+    var m = file.match(/^(.*?)_frame_/);
+    if(m) return m[1];
+    var dot = file.lastIndexOf(".");
+    return dot > -1 ? file.substring(0, dot) : file;
+  }
+
+  var items = [];
+  (function build(){
+    var lastHeader = null;
+    for(var i=0;i<FILES.length;i++){
+      var f = FILES[i];
+      var name = NAME_MAP[f.file] || NAME_MAP[prefixOf(f.file)] || null;
+      var showHeader = false;
+      if(name && name !== lastHeader){
+        showHeader = true;
+        lastHeader = name;
+      } else if(!name){
+        // an unnamed entry does not reset/repeat any header
+      }
+      items.push({
+        file: f.file,
+        video: f.video,
+        url: BASE_URL + encodeURIComponent(f.file).replace(/%2F/g,"/"),
+        groupLabel: name,
+        showHeader: showHeader
+      });
+    }
+  })();
+
+  var TOTAL = items.length;
+  var TOTAL_PAGES = Math.max(1, Math.ceil(TOTAL / PAGE_SIZE));
+
+  document.getElementById("subCount").textContent =
+    TOTAL.toLocaleString() + " profiles";
+
+  // ---------------------------------------------------------------
+  // Rendering — only the current page's DOM/images exist at any time.
+  // Navigating pages tears down the previous page's media elements so
+  // memory is freed before the next page is built.
+  // ---------------------------------------------------------------
+  var mainEl = document.getElementById("main");
+  var pagerEl = document.getElementById("pager");
+  var currentPage = 1;
+  var io = null; // IntersectionObserver for lazy loading current page
+  var pageFlatCards = []; // flat list of {file,url,video} for current page, for lightbox nav
+
+  function teardownPage(){
+    if(io){ io.disconnect(); io = null; }
+    // Explicitly drop media sources before clearing, to release decoded
+    // image/video memory immediately rather than waiting on GC.
+    var media = mainEl.querySelectorAll("img,video");
+    for(var i=0;i<media.length;i++){
+      media[i].src = "";
+      media[i].removeAttribute("src");
+      if(media[i].pause) media[i].pause();
+    }
+    mainEl.innerHTML = "";
+  }
+
+  function renderPage(page){
+    page = Math.min(Math.max(1, page), TOTAL_PAGES);
+    teardownPage();
+    currentPage = page;
+    pageFlatCards = [];
+
+    var start = (page-1) * PAGE_SIZE;
+    var end = Math.min(start + PAGE_SIZE, TOTAL);
+    var slice = items.slice(start, end);
+
+    var frag = document.createDocumentFragment();
+    var currentGroupEl = null;
+
+    slice.forEach(function(item, idxInSlice){
+      if(item.showHeader){
+        var groupWrap = document.createElement("div");
+        groupWrap.className = "group";
+        var h = document.createElement("div");
+        h.className = "group-header";
+        h.textContent = item.groupLabel;
+        groupWrap.appendChild(h);
+        var grid = document.createElement("div");
+        grid.className = "grid";
+        groupWrap.appendChild(grid);
+        frag.appendChild(groupWrap);
+        currentGroupEl = grid;
+      } else if(!currentGroupEl){
+        var plainWrap = document.createElement("div");
+        plainWrap.className = "group";
+        var plainGrid = document.createElement("div");
+        plainGrid.className = "grid";
+        plainWrap.appendChild(plainGrid);
+        frag.appendChild(plainWrap);
+        currentGroupEl = plainGrid;
+      }
+
+      var card = document.createElement("div");
+      card.className = "card";
+      card.setAttribute("data-idx", String(pageFlatCards.length));
+
+      var ph = document.createElement("div");
+      ph.className = "ph";
+      card.appendChild(ph);
+
+      if(item.video){
+        var v = document.createElement("video");
+        v.muted = true;
+        v.playsInline = true;
+        v.preload = "none";
+        v.setAttribute("data-src", item.url);
+        card.appendChild(v);
+        var badge = document.createElement("div");
+        badge.className = "play-badge";
+        badge.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 21,12 5,21"></polygon></svg>';
+        card.appendChild(badge);
+      } else {
+        var img = document.createElement("img");
+        img.setAttribute("data-src", item.url);
+        img.alt = "";
+        img.loading = "lazy";
+        card.appendChild(img);
+      }
+
+      card.addEventListener("click", (function(flatIdx){
+        return function(){ openLightbox(flatIdx); };
+      })(pageFlatCards.length));
+
+      pageFlatCards.push(item);
+      currentGroupEl.appendChild(card);
+    });
+
+    mainEl.appendChild(frag);
+    attachLazyLoad();
+    renderPager();
+    window.scrollTo({top:0, behavior:"instant" in window ? "instant" : "auto"});
+  }
+
+  function attachLazyLoad(){
+    var targets = mainEl.querySelectorAll("img[data-src], video[data-src]");
+    io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          var el = entry.target;
+          var src = el.getAttribute("data-src");
+          if(src){
+            el.src = src;
+            el.removeAttribute("data-src");
+            el.addEventListener(el.tagName === "VIDEO" ? "loadeddata" : "load", function(){
+              el.classList.add("loaded");
+              var ph = el.parentElement.querySelector(".ph");
+              if(ph) ph.remove();
+            }, {once:true});
+          }
+          io.unobserve(el);
+        }
+      });
+    }, {root:null, rootMargin:"200px 0px", threshold:0.01});
+    targets.forEach(function(t){ io.observe(t); });
+  }
+
+  // ---------------------------------------------------------------
+  // Pagination nav — direct access to any page
+  // ---------------------------------------------------------------
+  function renderPager(){
+    pagerEl.innerHTML = "";
+
+    var prev = document.createElement("button");
+    prev.textContent = "‹";
+    prev.disabled = currentPage === 1;
+    prev.addEventListener("click", function(){ renderPage(currentPage-1); });
+    pagerEl.appendChild(prev);
+
+    for(var p=1; p<=TOTAL_PAGES; p++){
+      var btn = document.createElement("button");
+      btn.textContent = String(p);
+      if(p === currentPage) btn.className = "active";
+      (function(pg){
+        btn.addEventListener("click", function(){ renderPage(pg); });
+      })(p);
+      pagerEl.appendChild(btn);
+    }
+
+    var next = document.createElement("button");
+    next.textContent = "›";
+    next.disabled = currentPage === TOTAL_PAGES;
+    next.addEventListener("click", function(){ renderPage(currentPage+1); });
+    pagerEl.appendChild(next);
+  }
+
+  // ---------------------------------------------------------------
+  // Lightbox
+  // ---------------------------------------------------------------
+  var lb = document.getElementById("lightbox");
+  var lbStage = document.getElementById("lbStage");
+  var lbCount = document.getElementById("lbCount");
+  var lbIdx = 0;
+
+  function openLightbox(flatIdx){
+    lbIdx = flatIdx;
+    renderLightbox();
+    lb.classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function renderLightbox(){
+    var item = pageFlatCards[lbIdx];
+    lbStage.innerHTML = "";
+    if(!item) return;
+    if(item.video){
+      var v = document.createElement("video");
+      v.src = item.url;
+      v.controls = true;
+      v.autoplay = true;
+      v.playsInline = true;
+      lbStage.appendChild(v);
+    } else {
+      var img = document.createElement("img");
+      img.src = item.url;
+      img.alt = "";
+      lbStage.appendChild(img);
+    }
+    lbCount.textContent = (lbIdx+1) + " / " + pageFlatCards.length +
+      "  ·  page " + currentPage + " of " + TOTAL_PAGES;
+  }
+
+  function closeLightbox(){
+    lb.classList.remove("open");
+    lbStage.innerHTML = "";
+    document.body.style.overflow = "";
+  }
+
+  document.getElementById("lbClose").addEventListener("click", closeLightbox);
+  lb.addEventListener("click", function(e){ if(e.target === lb) closeLightbox(); });
+
+  document.getElementById("lbPrev").addEventListener("click", function(e){
+    e.stopPropagation();
+    if(lbIdx > 0){ lbIdx--; renderLightbox(); }
+    else if(currentPage > 1){ renderPage(currentPage-1); lbIdx = pageFlatCards.length-1; renderLightbox(); }
+  });
+  document.getElementById("lbNext").addEventListener("click", function(e){
+    e.stopPropagation();
+    if(lbIdx < pageFlatCards.length-1){ lbIdx++; renderLightbox(); }
+    else if(currentPage < TOTAL_PAGES){ renderPage(currentPage+1); lbIdx = 0; renderLightbox(); }
+  });
+
+  document.addEventListener("keydown", function(e){
+    if(!lb.classList.contains("open")) return;
+    if(e.key === "Escape") closeLightbox();
+    if(e.key === "ArrowLeft") document.getElementById("lbPrev").click();
+    if(e.key === "ArrowRight") document.getElementById("lbNext").click();
+  });
+
+  // simple touch swipe support
+  (function(){
+    var touchStartX = null;
+    lb.addEventListener("touchstart", function(e){ touchStartX = e.changedTouches[0].clientX; }, {passive:true});
+    lb.addEventListener("touchend", function(e){
+      if(touchStartX === null) return;
+      var dx = e.changedTouches[0].clientX - touchStartX;
+      if(Math.abs(dx) > 50){
+        if(dx < 0) document.getElementById("lbNext").click();
+        else document.getElementById("lbPrev").click();
+      }
+      touchStartX = null;
+    }, {passive:true});
+  })();
+
+  // ---------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------
+  renderPage(1);
+
+})();
+</script>
+</body>
+</html>
